@@ -46,8 +46,28 @@ const getSingleIssue = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateIssue = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, "Unauthorized: token is missing");
+  }
+
+  const result = await issuesService.updateIssueIntoDB(
+    req.params.id as string,
+    req.body,
+    req.user,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issue updated successfully",
+    data: result,
+  });
+});
+
 export const issuesController = {
   createIssue,
   getAllIssues,
   getSingleIssue,
+  updateIssue,
 };
