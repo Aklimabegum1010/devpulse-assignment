@@ -118,7 +118,44 @@ const getAllIssuesFromDB = async (query: IIssueQuery) => {
   });
 };
 
+const parseIssueId = (id: string) => {
+  const parsed = Number(id);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new AppError(400, "Invalid issue id");
+  }
+
+  return parsed;
+};
+
+const getSingleIssueFromDB = async (id: string) => {
+  const issueId = parseIssueId(id);
+
+  const result = await pool.query(`SELECT * FROM issues WHERE id = $1`, [
+    issueId,
+  ]);
+
+  const issue = result.rows[0];
+
+  if (!issue) {
+    throw new AppError(404, "Issue not found");
+  }
+
+  const reporterResult = await pool.query(
+    `SELECT id, name, role FROM users WHERE id = $1`,
+    [issue.reporter_id],
+  );
+
+  const { reporter_id, ...issueData } = issue;
+
+  return {
+    ...issueData,
+    reporter: reporterResult.rows[0] ?? null,
+  };
+};
+
 export const issuesService = {
   createIssueIntoDB,
   getAllIssuesFromDB,
+  getSingleIssueFromDB,
 };
