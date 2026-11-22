@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { pool } from "../../db/index.js";
+import config from "../../config/index.js";
 import AppError from "../../utils/AppError.js";
 import { isNonEmptyString, isValidEmail, isValidRole } from "../../utils/validators.js";
-import type { ISignupPayload } from "./auth.interface.js";
+import type { ILoginPayload, ISignupPayload } from "./auth.interface.js";
 
 const signupUserIntoDB = async (payload: ISignupPayload) => {
   const { name, email, password, role } = payload ?? ({} as ISignupPayload);
@@ -51,6 +53,56 @@ const signupUserIntoDB = async (payload: ISignupPayload) => {
   return result.rows[0];
 };
 
+const loginUserIntoDB = async (payload: ILoginPayload) => {
+  const { email, password } = payload ?? ({} as ILoginPayload);
+
+  const errors: string[] = [];
+
+  if (!isNonEmptyString(email) || !isValidEmail(email)) {
+    errors.push("a valid email is required");
+  }
+  if (!isNonEmptyString(password)) {
+    errors.push("password is required");
+  }
+
+  if (errors.length > 0) {
+    throw new AppError(400, "Validation failed", errors);
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const result = await pool.query(`SELECT * FROM users WHERE email = $1`, [
+    normalizedEmail,
+  ]);
+
+  const user = result.rows[0];
+
+  if (!user) {
+    throw new AppError(401, "Invalid email or password");
+  }
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordMatched) {
+    throw new AppError(401, "Invalid email or password");
+  }
+
+  const jwtPayload = {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+  };
+
+  const token = jwt.sign(jwtPayload, config.jwt_secret, {
+    expiresIn: config.jwt_expires_in as SignOptions["expiresIn"],
+  });
+
+  delete user.password;
+
+  return { token, user };
+};
+
 export const authService = {
   signupUserIntoDB,
+  loginUserIntoDB,
 };
