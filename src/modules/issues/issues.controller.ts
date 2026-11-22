@@ -3,6 +3,7 @@ import AppError from "../../utils/AppError.js";
 import catchAsync from "../../utils/catchAsync.js";
 import sendResponse from "../../utils/sendResponse.js";
 import { issuesService } from "./issues.service.js";
+import type { IIssueQuery } from "./issues.interface.js";
 
 const createIssue = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
@@ -19,6 +20,20 @@ const createIssue = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getAllIssues = catchAsync(async (req: Request, res: Response) => {
+  const result = await issuesService.getAllIssuesFromDB(
+    req.query as unknown as IIssueQuery,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issues retrived successfully",
+    data: result,
+  });
+});
+
 export const issuesController = {
   createIssue,
+  getAllIssues,
 };
