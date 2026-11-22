@@ -1,0 +1,24 @@
+import type { Request, Response } from "express";
+import AppError from "../../utils/AppError.js";
+import catchAsync from "../../utils/catchAsync.js";
+import sendResponse from "../../utils/sendResponse.js";
+import { issuesService } from "./issues.service.js";
+
+const createIssue = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, "Unauthorized: token is missing");
+  }
+
+  const result = await issuesService.createIssueIntoDB(req.body, req.user.id);
+
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: "Issue created successfully",
+    data: result,
+  });
+});
+
+export const issuesController = {
+  createIssue,
+};
